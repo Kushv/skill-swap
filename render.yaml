@@ -1,0 +1,37 @@
+services:
+  # Backend Service
+  - type: web
+    name: skillswap-backend
+    env: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGO_URI
+        sync: false # Set this in Render Dashboard
+      - key: JWT_SECRET
+        sync: false # Set this in Render Dashboard
+
+  # Frontend Service
+  - type: web
+    name: skillswap-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: skillswap-backend
+          envVarKey: RENDER_EXTERNAL_URL
+        # We append /api in the frontend or we can just append it here if needed.
+        # But for Render YAML, we should just set it in dashboard.
+      - key: VITE_SOCKET_URL
+        fromService:
+          type: web
+          name: skillswap-backend
+          envVarKey: RENDER_EXTERNAL_URL
