@@ -11,11 +11,10 @@ const generateRefreshToken = (res, userId) => {
     expiresIn: process.env.JWT_REFRESH_EXPIRY || '7d',
   });
 
-  // Set refreshToken as an HTTP-only cookie
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV !== 'development', // Use secure cookies in production
-    sameSite: 'strict', // Prevent CSRF attacks
+    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production (HTTPS required for SameSite=None)
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' allows cross-origin cookies
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 

@@ -20,8 +20,10 @@ const app = express();
 // Security Middlewares
 app.use(helmet());
 
+const clientUrl = process.env.CLIENT_URL ? process.env.CLIENT_URL.replace(/\/$/, '') : null;
+
 const allowedOrigins = [
-  process.env.CLIENT_URL,
+  clientUrl,
   'http://localhost:5173',
   'http://localhost:8080',
   'http://10.12.43.156:8080',
