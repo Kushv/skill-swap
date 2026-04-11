@@ -17,6 +17,9 @@ dotenv.config();
 
 const app = express();
 
+// Trust proxy for PaaS deployments (Render, Heroku) so rate limiter doesn't block everyone
+app.set('trust proxy', 1);
+
 // Security Middlewares
 app.use(helmet());
 
