@@ -16,25 +16,22 @@ const protect = async (req, res, next) => {
       req.user = await User.findById(decoded.id).select('-password');
       if (!req.user) {
         res.status(401);
-        throw new Error('Not authorized, user not found');
+        return next(new Error('Not authorized, user not found'));
       }
 
-      next();
+      return next();
     } catch (error) {
-       console.error(error);
-       res.status(401);
-       if(error.name === 'TokenExpiredError') {
-           next(new Error('Not authorized, token expired'));
-       } else {
-           next(new Error('Not authorized, token failed'));
-       }
+      res.status(401);
+      if (error.name === 'TokenExpiredError') {
+        return next(new Error('Not authorized, token expired'));
+      }
+      return next(new Error('Not authorized, token failed'));
     }
   }
 
-  if (!token) {
-    res.status(401);
-    next(new Error('Not authorized, no token'));
-  }
+  // No token provided at all
+  res.status(401);
+  return next(new Error('Not authorized, no token'));
 };
 
 export { protect };

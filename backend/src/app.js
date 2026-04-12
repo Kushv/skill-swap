@@ -17,13 +17,16 @@ dotenv.config();
 
 const app = express();
 
-// Trust proxy for PaaS deployments (Render, Heroku) so rate limiter doesn't block everyone
+// Trust proxy for PaaS deployments (Render, Heroku) so rate limiter works correctly
 app.set('trust proxy', 1);
 
-// Security Middlewares
-app.use(helmet());
+// ─── Body Parsing Middleware (MUST be before routes and rate limiter) ───
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
-// Support multiple CLIENT_URLs as comma-separated list in env var
+// ─── CORS ───
+// Support multiple CLIENT_URLs as comma-separated list
 // e.g. CLIENT_URL="https://foo.netlify.app,https://custom-domain.com"
 const rawClientUrls = process.env.CLIENT_URL
   ? process.env.CLIENT_URL.split(',').map(u => u.trim().replace(/\/$/, ''))
@@ -43,48 +46,43 @@ const corsOptions = {
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-    console.error(`CORS blocked: origin "${origin}" not in`, allowedOrigins);
+    console.error(`CORS blocked: origin "${origin}" — allowed:`, allowedOrigins);
     return callback(new Error(`CORS: origin "${origin}" not allowed`));
   },
-  credentials: true, // Allow cookies (required for refreshToken)
-  optionsSuccessStatus: 200, // Fix for legacy browsers that send 204 on preflight
+  credentials: true, // Required for cookies (refreshToken)
+  optionsSuccessStatus: 200,
 };
 
-// Handle preflight requests for all routes
+// Handle preflight OPTIONS for all routes FIRST
 app.options('*', cors(corsOptions));
 app.use(cors(corsOptions));
 
-// Rate Limiting
-const limiter = rateLimit({
+// ─── Security Middlewares ───
+app.use(helmet());
+
+// ─── Rate Limiting (auth routes only) ───
+const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
-  message: 'Too many requests from this IP, please try again after 15 minutes',
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  max: 100,
+  message: { success: false, message: 'Too many requests, please try again after 15 minutes' },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
-// Apply rate limiting to auth routes specifically to prevent brute forcing
-app.use('/api/auth', limiter);
-
-// Built-in Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-
-// Routes
-app.use('/api/auth', authRoutes);
+// ─── Routes ───
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/reviews', reviewRoutes);
 
-// Root route for server check
+// Health check
 app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'API is running' });
+  res.status(200).json({ status: 'API is running', env: process.env.NODE_ENV });
 });
 
-// Error Handling Middleware
+// ─── Error Handling ───
 app.use(notFound);
 app.use(errorHandler);
 
