@@ -2,6 +2,19 @@
   command = "npm run build"
   publish = "dist"
 
+# ─────────────────────────────────────────────────────
+# IMPORTANT: Replace the VITE_API_URL and VITE_SOCKET_URL
+# values below with your actual deployed backend URL.
+# Example: https://skillswap-backend.onrender.com
+#
+# You can also set these in the Netlify Dashboard under:
+# Site configuration → Environment variables
+# (Dashboard values override the values set here)
+# ─────────────────────────────────────────────────────
+[build.environment]
+  VITE_API_URL = "https://skillswap-backend.onrender.com/api"
+  VITE_SOCKET_URL = "https://skillswap-backend.onrender.com"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

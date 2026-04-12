@@ -23,10 +23,14 @@ app.set('trust proxy', 1);
 // Security Middlewares
 app.use(helmet());
 
-const clientUrl = process.env.CLIENT_URL ? process.env.CLIENT_URL.replace(/\/$/, '') : null;
+// Support multiple CLIENT_URLs as comma-separated list in env var
+// e.g. CLIENT_URL="https://foo.netlify.app,https://custom-domain.com"
+const rawClientUrls = process.env.CLIENT_URL
+  ? process.env.CLIENT_URL.split(',').map(u => u.trim().replace(/\/$/, ''))
+  : [];
 
 const allowedOrigins = [
-  clientUrl,
+  ...rawClientUrls,
   'http://localhost:5173',
   'http://localhost:8080',
   'http://10.12.43.156:8080',
@@ -34,15 +38,20 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (e.g. mobile apps, curl, Postman)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error(`CORS: origin "${origin}" not allowed`));
+    // Allow requests with no origin (e.g. mobile apps, curl, Postman, SSR)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
     }
+    console.error(`CORS blocked: origin "${origin}" not in`, allowedOrigins);
+    return callback(new Error(`CORS: origin "${origin}" not allowed`));
   },
-  credentials: true, // Allow cookies
+  credentials: true, // Allow cookies (required for refreshToken)
+  optionsSuccessStatus: 200, // Fix for legacy browsers that send 204 on preflight
 };
+
+// Handle preflight requests for all routes
+app.options('*', cors(corsOptions));
 app.use(cors(corsOptions));
 
 // Rate Limiting
