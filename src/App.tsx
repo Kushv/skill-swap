@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -23,8 +24,21 @@ import { AuthProvider } from "./context/AuthContext";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+const AppContent = () => {
+  useEffect(() => {
+    // Ping backend every 10 minutes to prevent cold start on Render free tier
+    const ping = () => {
+      const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
+      fetch(`${baseUrl}/api/health`)
+        .then(() => console.log('Backend pinged'))
+        .catch(() => {});
+    };
+    ping(); // ping on load
+    const interval = setInterval(ping, 10 * 60 * 1000); // every 10 min
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -50,6 +64,12 @@ const App = () => (
         </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>
+  );
+};
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AppContent />
   </QueryClientProvider>
 );
 

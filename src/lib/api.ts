@@ -3,6 +3,7 @@ import axios from 'axios';
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
   withCredentials: true, // Important to send/receive cookies (refreshToken)
+  timeout: 30000, // 30 seconds - allows for Render cold start
   headers: {
     'Content-Type': 'application/json',
   },
@@ -28,10 +29,16 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      console.warn('Request timed out — backend may be waking up. Please try again.');
+      // return Promise.reject inside so UI can catch the string error via the generic handler if needed, but UI uses error.response?.data?.message. So we can inject a mock response object or error text:
+      error.response = { data: { message: 'Connection timed out. The server is waking up, please try again in 30 seconds.' } };
+    }
+
     const originalRequest = error.config;
 
     // Skip interceptor for auth routes so we don't end up in an infinite page reload loop
-    if (originalRequest.url?.includes('/auth/login') || originalRequest.url?.includes('/auth/refresh') || originalRequest.url?.includes('/auth/signup')) {
+    if (originalRequest?.url?.includes('/auth/login') || originalRequest?.url?.includes('/auth/refresh') || originalRequest?.url?.includes('/auth/signup')) {
       return Promise.reject(error);
     }
 

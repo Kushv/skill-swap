@@ -13,12 +13,18 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [slowNetwork, setSlowNetwork] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setSlowNetwork(false);
+
+    // Show "waking up" message after 5 seconds
+    const slowTimer = setTimeout(() => setSlowNetwork(true), 5000);
+
     try {
       const res = await api.post('/auth/signup', { name, email, password });
       toast.success("Account created!");
@@ -27,7 +33,9 @@ export default function Signup() {
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Signup failed");
     } finally {
+      clearTimeout(slowTimer);
       setLoading(false);
+      setSlowNetwork(false);
     }
   };
 
@@ -69,7 +77,12 @@ export default function Signup() {
                 <Input type="password" placeholder="Min. 8 characters" className="pl-10 bg-secondary border-border" value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
             </div>
-            <Button type="submit" className="w-full btn-glow">Create Account</Button>
+            <Button type="submit" className="w-full btn-glow" disabled={loading}>Create Account</Button>
+            {slowNetwork && (
+              <p className="text-yellow-500 text-xs text-center mt-2 font-medium">
+                ⏳ Server is waking up — this may take up to 30 seconds on first load...
+              </p>
+            )}
           </form>
 
           <div className="relative">
